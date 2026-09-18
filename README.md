@@ -40,16 +40,27 @@ Uses `express-session` with secure cookie configurations and a custom `requireAd
 
 ### Public Routes
 
-* `POST /api/create-order` - Initializes Razorpay transaction.
-* `POST /api/pre-register` - Saves attendee form data before payment.
-* `POST /api/verify-payment` - Validates payment signatures and issues tickets.
-* `GET /api/events` - Fetches active event lists.
+* `GET /api/events` - Lists events.
+* `POST /api/pre-register` - Saves attendee form data before payment. Returns `preId`.
+* `POST /api/create-order` - Creates a Razorpay order. The price is read from the event in the database, never from the request.
+* `POST /api/verify-payment` - Validates the payment signature and issues the ticket.
+* `POST /api/register-free` - Issues a ticket for a free event (no payment).
+* `POST /api/razorpay-webhook` - Razorpay `payment.captured` webhook (issues the ticket if the browser callback never arrived).
+* `GET /api/team`, `GET /api/gallery`, `GET /api/site` - Content shown on the website.
+* `GET /api/media/:id` - Serves an uploaded image.
 
 ### Admin Routes (Protected)
 
-* `POST /api/login` - Administrative authentication.
-* `GET /api/registrations` - Retrieves all ticketed attendees with sorting.
-* `POST /api/logout` - Terminates session and clears cookies.
+* `POST /api/login`, `POST /api/logout`, `GET /api/auth/me` - Admin session.
+* `GET /api/registrations` - All tickets, newest first.
+* `POST /api/validate-ticket/:ticketId?day=1|2` - Checks a ticket in at the entrance. Each ticket is admitted once per day.
+* `POST /api/media` - Uploads an image (raw JPG/PNG/WEBP body, max 10 MB). Returns its `id`.
+* `POST /api/events`, `PUT /api/events/:id`, `DELETE /api/events/:id` - Manage events.
+* `POST /api/team`, `PUT /api/team/:id`, `DELETE /api/team/:id`, `PUT /api/team/order` - Manage team members.
+* `POST /api/gallery`, `PUT /api/gallery/:id`, `DELETE /api/gallery/:id`, `PUT /api/gallery/order` - Manage gallery photos.
+* `PUT /api/site` - Homepage slides, homepage numbers, contact details and social links.
+
+Uploaded images are stored in MongoDB (GridFS, `media` bucket), so no separate file hosting is needed.
 
 ## ⚙️ Environment Variables
 
@@ -66,6 +77,10 @@ VERIFIED_SENDER_EMAIL=your_email
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your_secure_password
 SESSION_SECRET=your_session_secret
+# Local development only (plain http): lets the admin login cookie work on localhost
+# SESSION_COOKIE_SECURE=false
+# Extra frontend URLs allowed to call the API (comma-separated), e.g. a test deployment
+# CORS_ORIGINS=https://my-test-site.onrender.com
 
 ```
 
@@ -93,7 +108,17 @@ npm run dev
 ```
 
 
-4. **Export Data (Optional):**
+4. **Import existing website content (once, after first deploying the admin panel):**
+Copies the team, gallery and homepage slides that used to be hardcoded in the frontend into the database.
+```bash
+npm install --no-save sharp
+node seed-content.js ../path/to/SambhavofficialFrontend
+
+```
+Each section is skipped if it already has data, so running it twice is safe.
+
+
+5. **Export Data (Optional):**
 To export current registrations to CSV:
 ```bash
 node export.js
