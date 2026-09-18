@@ -1,5 +1,6 @@
-# Render Blueprint for a TEST deployment of the admin panel work.
-# Creates the backend API and the frontend site together.
+# Render Blueprint for a TEST deployment of the live Sambhav site with fixes.
+# Deploys the private copies of the live code (shivanandpotle-jspm) on the
+# `fixes` branch. Creates the backend API and the frontend site together.
 # Secrets marked `sync: false` are typed into Render's dashboard when the
 # Blueprint is created; they are never stored in this file.
 #
@@ -11,11 +12,11 @@ services:
     runtime: node
     plan: free
     region: singapore
-    repo: https://github.com/PersonalPurva/sambhav_backend
-    branch: admin-cms
+    repo: https://github.com/PersonalPurva/sambhav-official-backend-test
+    branch: fixes
     buildCommand: npm ci
     startCommand: node server.js
-    healthCheckPath: /api/site
+    healthCheckPath: /api/events
     envVars:
       # Use a SEPARATE test database, not the live one.
       - key: MONGODB_URI
@@ -26,6 +27,11 @@ services:
         sync: false
       - key: SESSION_SECRET
         generateValue: true
+      # Signs admin logins. Never leave it unset: the code has a public fallback.
+      - key: JWT_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
       # Razorpay TEST mode keys (rzp_test_...), so no real money moves.
       - key: RAZORPAY_KEY_ID
         sync: false
@@ -44,8 +50,8 @@ services:
   - type: web
     name: sambhav-frontend-test
     runtime: static
-    repo: https://github.com/PersonalPurva/sambhav_frontend
-    branch: admin-cms
+    repo: https://github.com/PersonalPurva/sambhav-official-frontend-test
+    branch: fixes
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
     routes:
