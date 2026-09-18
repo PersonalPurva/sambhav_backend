@@ -1,0 +1,61 @@
+# Render Blueprint for a TEST deployment of the admin panel work.
+# Creates the backend API and the frontend site together.
+# Secrets marked `sync: false` are typed into Render's dashboard when the
+# Blueprint is created; they are never stored in this file.
+#
+# If Render adds a suffix to either service name because it is taken,
+# update CORS_ORIGINS and VITE_API_URL below to the real URLs.
+services:
+  - type: web
+    name: sambhav-backend-test
+    runtime: node
+    plan: free
+    region: singapore
+    repo: https://github.com/PersonalPurva/sambhav_backend
+    branch: admin-cms
+    buildCommand: npm ci
+    startCommand: node server.js
+    healthCheckPath: /api/site
+    envVars:
+      # Use a SEPARATE test database, not the live one.
+      - key: MONGODB_URI
+        sync: false
+      - key: ADMIN_USERNAME
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      # Razorpay TEST mode keys (rzp_test_...), so no real money moves.
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        generateValue: true
+      # Optional: without these, tickets are still issued but not emailed.
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: VERIFIED_SENDER_EMAIL
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://sambhav-frontend-test.onrender.com
+
+  - type: web
+    name: sambhav-frontend-test
+    runtime: static
+    repo: https://github.com/PersonalPurva/sambhav_frontend
+    branch: admin-cms
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      # Single-page app: let the frontend handle /team, /admin, /scan, ...
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        value: https://sambhav-backend-test.onrender.com
+      # Same Razorpay TEST key id as the backend.
+      - key: VITE_RAZORPAY_KEY_ID
+        sync: false
